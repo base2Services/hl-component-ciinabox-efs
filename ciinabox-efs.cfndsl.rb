@@ -107,7 +107,7 @@ CloudFormation do
             if event['RequestType'] == 'Create':
               physicalResourceId = create_fs()
               logger.info(f'filesystem {physicalResourceId} created')
-              wait_until('available', id)
+              wait_until('available', physicalResourceId)
 
             elif event['RequestType'] == 'Update':
               physicalResourceId = event['PhysicalResourceId']
