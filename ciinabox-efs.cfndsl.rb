@@ -130,6 +130,7 @@ CloudFormation do
             physicalResourceId = None
             name = event['ResourceProperties'].get('Name')
             tags = event['ResourceProperties'].get('Tags')
+            tags.append({'Key': 'Name', 'Value': name})
 
             if event['RequestType'] == 'Create':
               filesystem = get_filesystem_id(name)
