@@ -128,8 +128,8 @@ CloudFormation do
             # Globals
             responseData = {}
             physicalResourceId = None
-            name = event['ResourceProperties']['Name']
-            tags = event['ResourceProperties']['Tags']
+            name = event['ResourceProperties'].get('Name')
+            tags = event['ResourceProperties'].get('Tags')
 
             if event['RequestType'] == 'Create':
               filesystem = get_filesystem_id(name)
@@ -154,7 +154,7 @@ CloudFormation do
             cfnresponse.send(event, context, cfnresponse.SUCCESS, responseData, physicalResourceId)
 
           except Exception as e:
-            logger.error('failed to cleanup bucket', exc_info=True)
+            logger.error('ciinabox efs custom resource caught an unexpected exception', exc_info=True)
             cfnresponse.send(event, context, cfnresponse.FAILED, {})
 
       CODE
