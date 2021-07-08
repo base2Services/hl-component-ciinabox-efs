@@ -4,11 +4,11 @@ describe 'compiled component ciinabox-efs' do
   
   context 'cftest' do
     it 'compiles test' do
-      expect(system("cfhighlander cftest #{@validate} --tests tests/default.test.yaml")).to be_truthy
+      expect(system("cfhighlander cftest #{@validate} --tests tests/security_group_rules.test.yaml")).to be_truthy
     end      
   end
   
-  let(:template) { YAML.load_file("#{File.dirname(__FILE__)}/../out/tests/default/ciinabox-efs.compiled.yaml") }
+  let(:template) { YAML.load_file("#{File.dirname(__FILE__)}/../out/tests/security_group_rules/ciinabox-efs.compiled.yaml") }
   
   context "Resource" do
 
@@ -97,6 +97,10 @@ describe 'compiled component ciinabox-efs' do
       
       it "to have property VpcId" do
           expect(resource["Properties"]["VpcId"]).to eq({"Ref"=>"VPCId"})
+      end
+      
+      it "to have property SecurityGroupIngress" do
+          expect(resource["Properties"]["SecurityGroupIngress"]).to eq([{"FromPort"=>2049, "IpProtocol"=>"TCP", "ToPort"=>2049, "Description"=>{"Fn::Sub"=>"Use IP blocks and SG group"}, "CidrIp"=>{"Fn::Sub"=>"127.0.0.1/32"}}, {"FromPort"=>2049, "IpProtocol"=>"TCP", "ToPort"=>2049, "Description"=>{"Fn::Sub"=>"Use IP blocks and SG group"}, "CidrIp"=>{"Fn::Sub"=>"127.0.0.2/32"}}, {"FromPort"=>2049, "IpProtocol"=>"TCP", "ToPort"=>2049, "Description"=>{"Fn::Sub"=>"Use IP blocks and SG group"}, "SourceSecurityGroupId"=>{"Fn::Sub"=>"sg-rkqufht"}}])
       end
       
       it "to have property Tags" do

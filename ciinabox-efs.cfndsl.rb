@@ -1,4 +1,11 @@
 CloudFormation do
+
+  tags = []
+  tags.push(
+    { Key: 'Environment', Value: Ref(:EnvironmentName) },
+    { Key: 'EnvironmentType', Value: Ref(:EnvironmentType) }
+  )
+
   IAM_Role(:CiinaboxEfsCustomResourceRole) {
     AssumeRolePolicyDocument({
       Version: '2012-10-17',
@@ -53,45 +60,64 @@ CloudFormation do
       ZipFile: <<~CODE
         import cfnresponse
         import boto3
-        import uuid
+        import hashlib
         import time
 
         import logging
         logger = logging.getLogger(__name__)
         logger.setLevel(logging.INFO)
 
-        def create_fs():
+        def get_creation_token(name):
+          return hashlib.md5(name.encode('utf-8')).hexdigest()
+      
+        def create_filesystem(name):
           client = boto3.client('efs')
           resp = client.create_file_system(
-              CreationToken=uuid.uuid4().hex,
-              PerformanceMode='generalPurpose',
-              Encrypted=False,
-              ThroughputMode='bursting',
-              Backup=True
+            CreationToken=get_creation_token(name),
+            PerformanceMode='generalPurpose',
+            Encrypted=False,
+            ThroughputMode='bursting',
+            Backup=True
           )
           return resp['FileSystemId']
-      
-        def get_fs_state(fsid):
-            client = boto3.client('efs')
-            resp = client.describe_file_systems(
-                FileSystemId=fsid
-            )
-            return resp['FileSystems'][0]['LifeCycleState']
         
-        def wait_until(success, id, timeout=120, period=3):
-            end = time.time() + timeout
-            while time.time() < end:
-                state = get_fs_state(id)
-                print(f'filesystem is {state}, waiting to reach the {success} state')
-                if state == success: 
-                    return True
-                elif state == 'error':
-                    raise WaitError("filesystem is in an error state")
-                time.sleep(period)
-            return False
+        def get_filesystem_id(name):
+          client = boto3.client('efs')
+          resp = client.describe_file_systems(
+            CreationToken=get_creation_token(name)
+          )
+          if resp['FileSystems']:
+            return resp['FileSystems'][0]['FileSystemId']
+          return None
+        
+        def get_filesystem_state(filesystem):
+          client = boto3.client('efs')
+          resp = client.describe_file_systems(
+            FileSystemId=filesystem
+          )
+          return resp['FileSystems'][0]['LifeCycleState']
+        
+        def wait_until(success, filesystem, timeout=120, period=3):
+          end = time.time() + timeout
+          while time.time() < end:
+            state = get_filesystem_state(filesystem)
+            logger.info(f'filesystem is {state}, waiting to reach the {success} state')
+            if state == success: 
+              return True
+            elif state == 'error':
+              raise WaitError("filesystem is in an error state")
+            time.sleep(period)
+          return False
+
+        def tag_filesystem(filesystem, tags):
+          client = boto3.client('efs')
+          client.tag_resource(
+            ResourceId=filesystem,
+            Tags=tags
+          )
         
         class WaitError(Exception):
-            pass
+          pass
 
 
         def lambda_handler(event, context):
@@ -102,14 +128,24 @@ CloudFormation do
             # Globals
             responseData = {}
             physicalResourceId = None
-            # tags = event['ResourceProperties']['Tags']
+            name = event['ResourceProperties']['Name']
+            tags = event['ResourceProperties']['Tags']
 
             if event['RequestType'] == 'Create':
-              physicalResourceId = create_fs()
-              logger.info(f'filesystem {physicalResourceId} created')
-              wait_until('available', physicalResourceId)
+              filesystem = get_filesystem_id(name)
+              if filesystem is None:
+                logger.info(f'creating new filesystem')
+                filesystem = create_filesystem(name)
+                print(f'filesystem {filesystem} created')
+                wait_until('available', filesystem)
+              else:
+                print(f'filesystem {filesystem} already exists')
+              
+              tag_filesystem(filesystem, tags)
+              physicalResourceId = filesystem
 
             elif event['RequestType'] == 'Update':
+              tag_filesystem(filesystem, tags)
               physicalResourceId = event['PhysicalResourceId']
               
             elif event['RequestType'] == 'Delete':
@@ -129,8 +165,42 @@ CloudFormation do
     Timeout 60
   }
 
-  Resource(:CiinaboxEfsCustomResource) {
-    Type "Custom::CleanUpBucket"
+  Resource(:FileSystem) {
+    Type "Custom::FileSystem"
     Property 'ServiceToken', FnGetAtt(:CiinaboxEfsCustomResourceFunction, :Arn)
+    Property 'Name', FnSub("/${EnvironmentName}-ciinabox")
+    Property 'Tags', tags
+  }
+
+  security_group_rules = external_parameters.fetch(:security_group_rules, [])
+  
+  EC2_SecurityGroup('SecurityGroupEFS') do
+    GroupDescription FnSub("${EnvironmentName} #{external_parameters[:component_name]}")
+    VpcId Ref('VPCId')
+    if security_group_rules.any?
+      SecurityGroupIngress generate_security_group_rules(security_group_rules,ip_blocks)
+    end
+    Tags tags.push({Key: 'Name', Value:  FnSub("${EnvironmentName}-ciinabox-FileSystem")})
+  end
+
+  external_parameters[:max_availability_zones].times do |az|
+
+    matches = ((az+1)..external_parameters[:max_availability_zones]).to_a
+    Condition("CreateEFSMount#{az}",
+      matches.length == 1 ? FnEquals(Ref(:AvailabilityZones), external_parameters[:max_availability_zones]) : FnOr(matches.map { |i| FnEquals(Ref(:AvailabilityZones), i) })
+    )
+
+    EFS_MountTarget("MountTarget#{az}") do
+      Condition("CreateEFSMount#{az}")
+      FileSystemId Ref('FileSystem')
+      SecurityGroups [ Ref("SecurityGroupEFS") ]
+      SubnetId FnSelect(az, Ref('SubnetIds'))
+    end
+
+  end
+
+  Output(:FileSystem) {
+    Value(Ref('FileSystem'))
+    Export FnSub("${EnvironmentName}-#{external_parameters[:component_name]}-FileSystem")
   }
 end
