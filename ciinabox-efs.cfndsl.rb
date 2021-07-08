@@ -48,11 +48,6 @@ CloudFormation do
     ])
   }
 
-  Logs_LogGroup(:CiinaboxEfsCustomResourceLogGroup) {
-    LogGroupName FnSub("/aws/lambda/${CiinaboxEfsCustomResourceFunction}")
-    RetentionInDays 30
-  }
-
   Lambda_Function(:CiinaboxEfsCustomResourceFunction) {
     Code({
       ZipFile: <<~CODE
