@@ -180,7 +180,7 @@ CloudFormation do
     if security_group_rules.any?
       SecurityGroupIngress generate_security_group_rules(security_group_rules,ip_blocks)
     end
-    Tags tags.push({Key: 'Name', Value:  FnSub("${EnvironmentName}-ciinabox-FileSystem")})
+    Tags [{Key: 'Name', Value:  FnSub("${EnvironmentName}-ciinabox-FileSystem")}] + tags
   end
 
   external_parameters[:max_availability_zones].times do |az|
