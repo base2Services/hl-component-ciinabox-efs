@@ -173,6 +173,11 @@ CloudFormation do
     Property 'Tags', tags
   }
 
+  Output(:FileSystem) {
+    Value(Ref('FileSystem'))
+    Export FnSub("${EnvironmentName}-#{external_parameters[:component_name]}-FileSystem")
+  }
+
   security_group_rules = external_parameters.fetch(:security_group_rules, [])
   
   EC2_SecurityGroup('SecurityGroupEFS') do
@@ -181,7 +186,7 @@ CloudFormation do
     if security_group_rules.any?
       SecurityGroupIngress generate_security_group_rules(security_group_rules,ip_blocks)
     end
-    Tags [{Key: 'Name', Value:  FnSub("${EnvironmentName}-ciinabox-FileSystem")}] + tags
+    Tags [{Key: 'Name', Value:  FnSub("${EnvironmentName}-ciinabox-filesystem")}] + tags
   end
 
   external_parameters[:max_availability_zones].times do |az|
@@ -200,8 +205,21 @@ CloudFormation do
 
   end
 
-  Output(:FileSystem) {
-    Value(Ref('FileSystem'))
-    Export FnSub("${EnvironmentName}-#{external_parameters[:component_name]}-FileSystem")
-  }
+  unless access_points.empty?
+    access_points.each do |ap|
+      EFS_AccessPoint("#{ap['name']}AccessPoint") do
+        AccessPointTags [{Key: 'Name', Value:  FnSub("${EnvironmentName}-ciinabox-ap-#{ap['name']}")}] + tags
+        FileSystemId Ref('FileSystem')
+        PosixUser ap['posix_user'] if ap.has_key?('posix_user')
+        RootDirectory ap['root_directory'] if ap.has_key?('root_directory')
+      end
+
+      Output("#{ap['name']}AccessPoint") {
+        Value(Ref("#{ap['name']}AccessPoint"))
+        Export FnSub("${EnvironmentName}-#{external_parameters[:component_name]}-#{ap['name']}AccessPoint")
+      }
+    end
+  end
+
+  
 end
