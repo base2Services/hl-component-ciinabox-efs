@@ -7,6 +7,7 @@ CfhighlanderTemplate do
   Parameters do
     ComponentParam 'EnvironmentName', 'dev', isGlobal: true
     ComponentParam 'EnvironmentType', 'development', allowedValues: ['development','production'], isGlobal: true
+    ComponentParam 'VolumeName', ''
     ComponentParam 'VPCId', type: 'AWS::EC2::VPC::Id'
     ComponentParam 'SubnetIds', type: 'List<AWS::EC2::Subnet::Id>'
     ComponentParam 'AvailabilityZones', max_availability_zones,

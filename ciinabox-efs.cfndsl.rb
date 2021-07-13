@@ -166,10 +166,12 @@ CloudFormation do
     Timeout 60
   }
 
+  Condition(:VolumeNameSet, FnNot(FnEquals(Ref(:VolumeName), '')))
+
   Resource(:FileSystem) {
     Type "Custom::FileSystem"
     Property 'ServiceToken', FnGetAtt(:CiinaboxEfsCustomResourceFunction, :Arn)
-    Property 'Name', FnSub("/${EnvironmentName}-ciinabox")
+    Property 'Name', FnIf(:VolumeNameSet, Ref(:VolumeName), FnSub("/${EnvironmentName}-ciinabox"))
     Property 'Tags', tags
   }
 
