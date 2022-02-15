@@ -40,6 +40,13 @@ CloudFormation do
             {
               Effect: 'Allow',
               Action: [
+                'iam:CreateServiceLinkedRole'
+              ],
+              Resource: '*'
+            },
+            {
+              Effect: 'Allow',
+              Action: [
                 'elasticfilesystem:UpdateFileSystem',
                 'elasticfilesystem:CreateFileSystem',
                 'elasticfilesystem:DescribeFileSystems',
