@@ -55,7 +55,7 @@ CloudFormation do
                 'elasticfilesystem:UntagResource'
               ],
               Resource: '*'
-            }
+            },
             {
               Effect: 'Allow',
               Action: [
