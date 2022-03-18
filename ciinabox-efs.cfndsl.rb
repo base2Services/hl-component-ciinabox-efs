@@ -56,6 +56,13 @@ CloudFormation do
               ],
               Resource: '*'
             }
+            {
+              Effect: 'Allow',
+              Action: [
+                'iam:CreateServiceLinkedRole'
+              ],
+              Resource: '*'
+            }
           ]
         }
       }
