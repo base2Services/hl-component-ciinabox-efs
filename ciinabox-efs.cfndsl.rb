@@ -221,6 +221,8 @@ CloudFormation do
 
   end
 
+  access_points = external_parameters.fetch(:access_points, [])
+
   unless access_points.empty?
     access_points.each do |ap|
       EFS_AccessPoint("#{ap['name']}AccessPoint") do
