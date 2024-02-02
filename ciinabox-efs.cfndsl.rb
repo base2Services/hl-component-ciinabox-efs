@@ -175,7 +175,7 @@ CloudFormation do
       CODE
     })
     Handler "index.lambda_handler"
-    Runtime "python3.7"
+    Runtime "python3.11"
     Role FnGetAtt(:CiinaboxEfsCustomResourceRole, :Arn)
     Timeout 60
   }
@@ -220,6 +220,8 @@ CloudFormation do
     end
 
   end
+
+  access_points = external_parameters.fetch(:access_points, [])
 
   unless access_points.empty?
     access_points.each do |ap|
