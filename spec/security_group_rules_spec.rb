@@ -50,7 +50,7 @@ describe 'compiled component ciinabox-efs' do
       end
       
       it "to have property Runtime" do
-          expect(resource["Properties"]["Runtime"]).to eq("python3.7")
+          expect(resource["Properties"]["Runtime"]).to eq("python3.11")
       end
       
       it "to have property Role" do

@@ -175,7 +175,7 @@ CloudFormation do
       CODE
     })
     Handler "index.lambda_handler"
-    Runtime "python3.7"
+    Runtime "python3.11"
     Role FnGetAtt(:CiinaboxEfsCustomResourceRole, :Arn)
     Timeout 60
   }
